@@ -1,6 +1,9 @@
 /*
-CardDavMATE - CardDav Web Client
-Copyright (C) 2011-2013 Jan Mate <jan.mate@inf-it.com>
+CardDavMATE - the open source CardDAV Web Client
+Copyright (C) 2011-2015
+    Jan Mate <jan.mate@inf-it.com>
+    Andrej Lezo <andrej.lezo@inf-it.com>
+    Matej Mihalik <matej.mihalik@inf-it.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -89,14 +92,35 @@ String.prototype.customCompare=function(stringB, alphabet, dir, caseSensitive)
 			stringB=stringB.toLowerCase();
 		}
 		while(stringA.charAt(pos)===stringB.charAt(pos) && pos<min){pos++;}
-		return (stringA.charAt(pos)=='' || alphabet.indexOf(stringA.charAt(pos))<alphabet.indexOf(stringB.charAt(pos))) ? -dir : dir;
+
+		if(stringA.charAt(pos)=='')
+			return -dir;
+		else
+		{
+			var index1=alphabet.indexOf(stringA.charAt(pos));
+			var index2=alphabet.indexOf(stringB.charAt(pos));
+
+			if(index1==-1 || index2==-1)
+				return stringA.localeCompare(stringB);
+			else
+				return (index1<index2 ? -dir : dir);
+		}
 	}
-}
+};
 
 function customResourceCompare(objA, objB)
 {
 	return objA.displayValue.customCompare(objB.displayValue, globalSortAlphabet, 1, false);
 }
+
+function checkColorBrightness(hex)
+{
+	var R=parseInt(hex.substring(0, 2), 16);
+	var G=parseInt(hex.substring(2, 4), 16);
+	var B=parseInt(hex.substring(4, 6), 16);
+	return Math.sqrt(0.241*R*R+0.691*G*G+0.068*B*B);
+}
+
 // Get unique values from array
 Array.prototype.unique=function()
 {
@@ -115,7 +139,7 @@ String.prototype.replaceAll=function(stringToFind,stringToReplace)
 	while(temp.indexOf(stringToFind)!=-1)
 		temp=temp.replace(stringToFind,stringToReplace);
 	return temp;
-}
+};
 
 // Pad number with leading zeroes
 Number.prototype.pad=function(size){
@@ -123,85 +147,22 @@ Number.prototype.pad=function(size){
 	while(s.length<size)
 		s='0'+s;
 	return s;
-}
+};
 
 // Case insensitive search for attributes
-// Usage:	$('[id=vcard_editor]').find(':attrCaseInsensitive(data-type,"'+typeList[i]+'")')
+// Usage:	$('#selector').find(':attrCaseInsensitive(data-type,"'+typeList[i]+'")')
 jQuery.expr[':'].attrCaseInsensitive=function(elem, index, match)
 {
 	var matchParams=match[3].split(','),
 		attribute=matchParams[0].replace(/^\s*|\s*$/g,''),
 		value=matchParams[1].replace(/^\s*"|"\s*$/g,'').toLowerCase();
 	return jQuery(elem)['attr'](attribute)!=undefined && jQuery(elem)['attr'](attribute)==value;
-}
+};
 
-// Escape vCard value - RFC2426 (Section 2.4.2)
-function vcardEscapeValue(inputValue)
+// Capitalize given string
+function capitalize(string)
 {
-	return (inputValue==undefined ? '' : inputValue).replace(/(,|;|\\)/g,"\\$1").replace(/\n/g,'\\n');
-}
-
-// Unescape vCard value - RFC2426 (Section 2.4.2)
-function vcardUnescapeValue(inputValue)
-{
-	var outputValue='';
-	if(inputValue!=undefined)
-	{
-		for(var i=0;i<inputValue.length;i++)
-			if(inputValue[i]=='\\' && i+1<inputValue.length)
-			{
-				if(inputValue[++i]=='n')
-					outputValue+='\n';
-				else
-					outputValue+=inputValue[i];
-			}
-			else
-				outputValue+=inputValue[i];
-	}
-	return outputValue;
-}
-
-// Split parameters and remove double quotes from values (if parameter values are quoted)
-function vcardSplitParam(inputValue)
-{
-	var result=vcardSplitValue(inputValue, ';');
-	var index;
-
-	for(var i=0;i<result.length;i++)
-	{
-		index=result[i].indexOf('=');
-		if(index!=-1 && index+1<result[i].length && result[i][index+1]=='"' && result[i][result[i].length-1]=='"')
-			result[i]=result[i].substring(0,index+1)+result[i].substring(index+2,result[i].length-1);
-	}
-
-	return result;
-}
-
-// Split string by separator (but not '\' escaped separator)
-function vcardSplitValue(inputValue, inputDelimiter)
-{
-	var outputArray=new Array(),
-	i=0,j=0;
-
-	for(i=0;i<inputValue.length;i++)
-	{
-		if(inputValue[i]==inputDelimiter)
-		{
-			if(outputArray[j]==undefined)
-				outputArray[j]='';
-			++j;
-			continue;
-		}
-		outputArray[j]=(outputArray[j]==undefined ? '' : outputArray[j])+inputValue[i];
-
-		if(inputValue[i]=='\\' && i+1<inputValue.length)
-			outputArray[j]=outputArray[j]+inputValue[++i];
-	}
-
-	if(inputValue[inputValue.length-1]==inputDelimiter)
-		outputArray[j]='';
-
-	return outputArray;
+	return string.charAt(0).toUpperCase()+string.slice(1).toLowerCase();
 }
 
 // possible address field positions [fid] (value = text input, ?country?= country select input)
@@ -1505,7 +1466,314 @@ function localizeAddressTypes()
 					{fid:  3, type: 'input', 'data-addr-field': 'locality', placeholder: localization[globalInterfaceLanguage].pholderAddressCity},
 					{fid: 11, type: 'country'}
 				]
+	};
+}
+function vObjectLineFolding(inputText)
+{
+	var outputText='';
+	var maxLineOctetLength=75;
+	var count=0;
+
+	for(var i=0; inputText[i]!=undefined; i++)
+	{
+		var currentChar=inputText.charCodeAt(i);
+		var nextChar=inputText.charCodeAt(i+1);
+		if(currentChar==0x000D && nextChar==0x000A)
+		{
+			count=0;
+			outputText+='\r\n';
+			i++;
+			continue;
+		}
+
+		var surrogatePair=false;
+		if(currentChar<0x0080)
+			var charNum=1;
+		else if(currentChar<0x0800)
+			var charNum=2;
+		else if(currentChar<0xd800 || currentChar>=0xe000)
+			var charNum=3;
+		else
+		{
+			// surrogate pair
+			// UTF-16 encodes 0x10000-0x10FFFF by subtracting 0x10000 and splitting
+			// the 20 bits of 0x0-0xFFFFF into two halves
+			charNum=4;
+			surrogatePair=true;
+		}
+
+		if(count>maxLineOctetLength-charNum)
+		{
+			outputText+='\r\n ';
+			count=1;
+		}
+		outputText+=String.fromCharCode(currentChar);
+		if(surrogatePair)
+		{
+			outputText+=String.fromCharCode(vCardText.charCodeAt(i+1));
+			i++;
+		}
+		count+=charNum;
 	}
+	return outputText;
+}
+
+function rgbToHex(rgb)
+{
+	rgb=rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d*)?|(?:\.\d+)))?\)$/);
+	function hex(x)
+	{
+		return ("0"+parseInt(x).toString(16)).slice(-2);
+	}
+	return "#"+hex(rgb[1])+hex(rgb[2])+hex(rgb[3]);
+}
+
+function hexToRgba(hex, transparency) {
+	var bigint=parseInt(hex.substring(1), 16);
+	var r=(bigint >> 16) & 255;
+	var g=(bigint >> 8) & 255;
+	var b=bigint & 255;
+
+	return 'rgba('+r+','+g+','+b+','+transparency+')';
+}
+
+function rgbToRgba(rgb, transparency)
+{
+	rgb=rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d*)?|(?:\.\d+)))?\)$/);
+	return 'rgba('+rgb[1]+','+rgb[2]+','+rgb[3]+','+transparency+')';
+}
+
+function dataGetChecked(resourceListSelector)
+{
+	var checkedArr=$(resourceListSelector).find('input[type=checkbox]:checked').not('.unloadCheck').filter('[data-id]').filter(function(){return this.indeterminate==false}).map(function(){return $(this).attr('data-id')}).get();
+
+	for(i=checkedArr.length-1; i>=0; i--)
+		if(checkedArr[i].match(new RegExp('[^/]$'))!=null && checkedArr.indexOf(checkedArr[i].replace(new RegExp('[^/]+$'), ''))!=-1)
+			checkedArr.splice(i, 1);
+
+	return checkedArr;
+}
+
+function resourceChBoxClick(obj, resourceListSelector, headerSelector, returnChecked)
+{
+	$(obj).parent().nextUntil(headerSelector).find('input[type=checkbox]:visible').prop('checked', $(obj).prop('checked')).prop('indeterminate', false);
+	if(returnChecked)
+		return dataGetChecked(resourceListSelector);
+}
+
+function collectionChBoxClick(obj, resourceListSelector, headerSelector, collectionSelector, groupSelector, returnChecked)
+{
+	if(collectionSelector.match('_item$'))
+	{
+		var tmp_coh=$(obj).parent().prevAll(headerSelector).first();
+		var tmp_co_chbxs=tmp_coh.nextUntil(headerSelector).find('input[type=checkbox]:visible');
+	}
+	else
+	{
+		var tmp_coh=$(obj).parent().parent().prevAll(headerSelector).first();
+		var tmp_co_chbxs=tmp_coh.nextUntil(headerSelector).find(collectionSelector).find('input[type=checkbox]:visible');
+	}
+
+	if(groupSelector!=null)
+	{
+		if($(obj).prop('checked')==false && $(obj).prop('indeterminate')==false && $(obj).attr('data-ind')=='false' &&
+		$(obj).parent().next(groupSelector).height()>0/* note: ':visible' is not working! */)
+		{
+			$(obj).prop('indeterminate', true);
+			$(obj).prop('checked', true);
+			$(obj).attr('data-ind', 'true');
+			tmp_coh.find('input[type=checkbox]:visible').prop('indeterminate', true).prop('checked', false);
+
+			if(returnChecked)
+				return dataGetChecked(resourceListSelector);
+			return true;
+		}
+		else if($(obj).attr('data-ind')=='true')
+			$(obj).attr('data-ind', 'false');
+
+		$(obj).parent().next(groupSelector).find('input[type=checkbox]').prop('checked', $(obj).prop('checked'));
+	}
+
+	if(tmp_co_chbxs.length==tmp_co_chbxs.filter(':checked').length)
+		tmp_coh.find('input[type=checkbox]:visible').prop('checked', true).prop('indeterminate', false);
+	else if(tmp_co_chbxs.filter(':checked').length==0 && tmp_co_chbxs.filter(function(){return this.indeterminate==true}).length==0)
+		tmp_coh.find('input[type=checkbox]:visible').prop('checked', false).prop('indeterminate', false);
+	else
+		tmp_coh.find('input[type=checkbox]:visible').prop('indeterminate', true).prop('checked', false);
+
+	if(returnChecked)
+		return dataGetChecked(resourceListSelector);
+}
+
+function groupChBoxClick(obj, resourceListSelector, headerSelector, collectionSelector, groupSelector, returnChecked)
+{
+	var tmp_cg=$(obj).closest(groupSelector);
+	var tmp_cg_chbxs=tmp_cg.find('input[type=checkbox]:visible');
+	var tmp_co_chbxs=tmp_cg.prev().find('input[type=checkbox]:visible');
+
+	if(tmp_cg_chbxs.filter(':checked').length==0)
+		tmp_co_chbxs.prop('checked', false).prop('indeterminate', false);
+	else
+		tmp_co_chbxs.prop('indeterminate', true).prop('checked', false);
+
+	return collectionChBoxClick(tmp_co_chbxs, resourceListSelector, headerSelector, collectionSelector, null, returnChecked);
+}
+
+function loadResourceChBoxClick(obj, resourceListSelector, headerSelector, collectionSelector, resourceItemSelector)
+{
+	if(collectionSelector.match('_item$'))
+	{
+		var firstCollection=$(obj).parent().nextUntil(headerSelector).first();
+		if($(obj).prop('checked'))
+			$(obj).parent().nextUntil(headerSelector).addBack().removeClass('unloaded');
+		else
+			$(obj).parent().nextUntil(headerSelector).addBack().addClass('unloaded');
+	}
+	else
+	{
+		var firstCollection=$(obj).parent().nextUntil(headerSelector).first().find(collectionSelector);
+		if($(obj).prop('checked'))
+		{
+			$(obj).parent().nextUntil(headerSelector).find(collectionSelector).removeClass('unloaded');
+			$(obj).parent().removeClass('unloaded');
+		}
+		else
+		{
+			$(obj).parent().nextUntil(headerSelector).find(collectionSelector).addClass('unloaded');
+			$(obj).parent().addClass('unloaded');
+		}
+	}
+
+	$(resourceListSelector).find(headerSelector).find('.unloadCheckHeader:checked').prop('disabled',false);
+	$(resourceListSelector).find(collectionSelector).find('.unloadCheck:checked').prop('disabled',false);
+	if(!$(resourceListSelector).find(headerSelector).find('.unloadCheckHeader').filter(function(){return $(this).prop('checked') || $(this).prop('indeterminate');}).length)
+	{
+		$(obj).prop({'checked':false,'indeterminate':true});
+		$(obj).parent().removeClass('unloaded');
+		$(obj).parent().nextUntil(headerSelector).find('.unloadCheck').prop({'checked':false,'indeterminate':false});
+		firstCollection.removeClass('unloaded').find('.unloadCheck').prop({'checked':true,'indeterminate':false,'disabled':true});
+	}
+	else
+	{
+		$(obj).parent().nextUntil(headerSelector).find('.unloadCheck').prop({'checked':$(obj).prop('checked'),'indeterminate':false});
+		var checkedCollections=$(resourceListSelector).find(collectionSelector).find('.unloadCheck:checked');
+		if(checkedCollections.length==1)
+		{
+			var collection=checkedCollections.parents(resourceItemSelector);
+			if(!collection.prev().hasClass(resourceItemSelector.slice(1)) && !collection.next().hasClass(resourceItemSelector.slice(1)))
+				collection.prev().find('.unloadCheckHeader').prop('disabled',true);
+			checkedCollections.prop('disabled',true);
+		}
+	}
+}
+
+function loadCollectionChBoxClick(obj, resourceListSelector, headerSelector, collectionSelector, resourceItemSelector)
+{
+	if($(obj).prop('checked'))
+		$(obj).parent().removeClass('unloaded');
+	else
+		$(obj).parent().addClass('unloaded');
+
+	var checkedCollections=$(resourceListSelector).find(collectionSelector).find('.unloadCheck:checked');
+	if(checkedCollections.length==1)
+	{
+		var collection=checkedCollections.parents(resourceItemSelector);
+		if(!collection.prev().hasClass(resourceItemSelector.slice(1)) && !collection.next().hasClass(resourceItemSelector.slice(1)))
+			collection.prev().find('.unloadCheckHeader').prop('disabled',true);
+		checkedCollections.prop('disabled',true);
+	}
+	else
+	{
+		$(resourceListSelector).find(headerSelector).find('.unloadCheckHeader:checked').prop('disabled',false);
+		checkedCollections.prop('disabled',false);
+	}
+
+	if(collectionSelector.match('_item$'))
+	{
+		var tmp_coh=$(obj).parent().prevAll(headerSelector).first();
+		var tmp_co_chbxs=tmp_coh.nextUntil(headerSelector).find('.unloadCheck');
+	}
+	else
+	{
+		var tmp_coh=$(obj).parent().parent().prevAll(headerSelector).first();
+		var tmp_co_chbxs=tmp_coh.nextUntil(headerSelector).find(collectionSelector).find('.unloadCheck');
+	}
+
+	if(tmp_co_chbxs.length==tmp_co_chbxs.filter(':checked').length)
+		tmp_coh.removeClass('unloaded').find('.unloadCheckHeader').prop('checked', true).prop('indeterminate', false);
+	else if(tmp_co_chbxs.filter(':checked').length==0 && tmp_co_chbxs.filter(function(){return this.indeterminate==true}).length==0)
+		tmp_coh.addClass('unloaded').find('.unloadCheckHeader').prop('checked', false).prop('indeterminate', false);
+	else
+		tmp_coh.removeClass('unloaded').find('.unloadCheckHeader').prop('indeterminate', true).prop('checked', false);
+}
+
+// Escape vCard value - RFC2426 (Section 2.4.2)
+function vcardEscapeValue(inputValue)
+{
+	return (inputValue==undefined ? '' : inputValue).replace(/(,|;|\\)/g,"\\$1").replace(/\n/g,'\\n');
+}
+
+// Unescape vCard value - RFC2426 (Section 2.4.2)
+function vcardUnescapeValue(inputValue)
+{
+	var outputValue='';
+	if(inputValue!=undefined)
+	{
+		for(var i=0;i<inputValue.length;i++)
+			if(inputValue[i]=='\\' && i+1<inputValue.length)
+			{
+				if(inputValue[++i]=='n')
+					outputValue+='\n';
+				else
+					outputValue+=inputValue[i];
+			}
+			else
+				outputValue+=inputValue[i];
+	}
+	return outputValue;
+}
+
+// Split parameters and remove double quotes from values (if parameter values are quoted)
+function vcardSplitParam(inputValue)
+{
+	var result=vcardSplitValue(inputValue, ';');
+	var index;
+
+	for(var i=0;i<result.length;i++)
+	{
+		index=result[i].indexOf('=');
+		if(index!=-1 && index+1<result[i].length && result[i][index+1]=='"' && result[i][result[i].length-1]=='"')
+			result[i]=result[i].substring(0,index+1)+result[i].substring(index+2,result[i].length-1);
+	}
+
+	return result;
+}
+
+// Split string by separator (but not '\' escaped separator)
+function vcardSplitValue(inputValue, inputDelimiter)
+{
+	var outputArray=new Array(),
+	i=0,j=0;
+
+	for(i=0;i<inputValue.length;i++)
+	{
+		if(inputValue[i]==inputDelimiter)
+		{
+			if(outputArray[j]==undefined)
+				outputArray[j]='';
+			++j;
+			continue;
+		}
+		outputArray[j]=(outputArray[j]==undefined ? '' : outputArray[j])+inputValue[i];
+
+		if(inputValue[i]=='\\' && i+1<inputValue.length)
+			outputArray[j]=outputArray[j]+inputValue[++i];
+	}
+
+	if(inputValue[inputValue.length-1]==inputDelimiter)
+		outputArray[j]='';
+
+	return outputArray;
 }
 
 // equivalent data types (multiply types and/or type combinations can represent the same thing)
@@ -1513,72 +1781,82 @@ function localizeAddressTypes()
 // by "value" regexp then the server specified type is used as default
 var dataTypes=new Object();
 dataTypes['address_type']={
-	'work':'^work$',
-	'home':'^home$',
-	':_$!<other>!$_:':'^(?::_\\$!<other>!\\$_:|other)$'
+	'work': RegExp('^work$'),
+	'home': RegExp('^home$'),
+	':_$!<other>!$_:': RegExp('^(?::_\\$!<other>!\\$_:|other)$')
 };
 
 dataTypes['address_type_store_as']={
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['phone_type']={
-	'work':'^(?:voice,)?work$',
-	'home':'^home(?:,voice)?$',
-	'cell':'^cell(?:,voice)?$',
-	'cell,work':'^cell(?:,voice)?,work$',
-	'cell,home':'^cell,home(?:,voice)?$',
-	'main':'^main(?:,voice)?$',
-	'pager':'^pager$',
-	'fax':'^fax$',
-	'fax,work':'^fax,work$',
-	'fax,home':'^fax,home$',
-	'iphone':'^(?::_\\$!<iphone>!\\$_:|(?:cell,)?iphone(?:,voice)?)$',
-	'other':'^(?::_\\$!<other>!\\$_:|other)(?:,voice)?$'
+	'work': RegExp('^(?:voice,)?work$'),
+	'home': RegExp('^home(?:,voice)?$'),
+	'cell': RegExp('^cell(?:,voice)?$'),
+	'cell,work': RegExp('^cell(?:,voice)?,work$'),
+	'cell,home': RegExp('^cell,home(?:,voice)?$'),
+	'main': RegExp('^main(?:,voice)?$'),
+	'pager': RegExp('^pager$'),
+	'fax': RegExp('^fax$'),
+	'fax,work': RegExp('^fax,work$'),
+	'fax,home': RegExp('^fax,home$'),
+	'iphone': RegExp('^(?::_\\$!<iphone>!\\$_:|(?:cell,)?iphone(?:,voice)?)$'),
+	'other': RegExp('^(?::_\\$!<other>!\\$_:|other)(?:,voice)?$')
 };
 
 dataTypes['phone_type_store_as']={
 	'_$!<iphone>!$_':'_$!<iPhone>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['email_type']={
-	'internet,work':'^internet,work$',
-	'home,internet':'^home,internet$',
-	':mobileme:,internet':'^(?::mobileme:,internet|internet,mobileme)$',
-	':_$!<other>!$_:,internet':'^(?::_\\$!<other>!\\$_:,internet|internet,other)$'
+	'internet,work': RegExp('^internet,work$'),
+	'home,internet': RegExp('^home,internet$'),
+	':mobileme:,internet': RegExp('^(?::mobileme:,internet|internet,mobileme)$'),
+	':_$!<other>!$_:,internet': RegExp('^(?::_\\$!<other>!\\$_:,internet|internet,other)$')
 };
 
 dataTypes['email_type_store_as']={
 	'_$!<mobileme>!$_':'_$!<mobileMe>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['url_type']={
-	'work':'^work$',
-	'home':'^home$',
-	':_$!<homepage>!$_:':'^(?::_\\$!<homepage>!\\$_:|homepage)$',
-	':_$!<other>!$_:':'^(?::_\\$!<other>!\\$_:|other)$'
+	'work': RegExp('^work$'),
+	'home': RegExp('^home$'),
+	':_$!<homepage>!$_:': RegExp('^(?::_\\$!<homepage>!\\$_:|homepage)$'),
+	':_$!<other>!$_:': RegExp('^(?::_\\$!<other>!\\$_:|other)$')
 };
 
 dataTypes['url_type_store_as']={
 	'_$!<homepage>!$_':'_$!<HomePage>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
+
+dataTypes['date_type']={
+	':_$!<anniversary>!$_:': RegExp('^:_\\$!<anniversary>!\\$_:$'),
+	':_$!<other>!$_:': RegExp('^:_\\$!<other>!\\$_:$')
+};
+
+dataTypes['date_store_as']={
+	'_$!<anniversary>!$_':'_$!<Anniversary>!$_',
+	'_$!<other>!$_':'_$!<Other>!$_'
+};
 
 dataTypes['person_type']={
-	':_$!<father>!$_:':'^:_\\$!<father>!\\$_:$',
-	':_$!<mother>!$_:':'^:_\\$!<mother>!\\$_:$',
-	':_$!<parent>!$_:':'^:_\\$!<parent>!\\$_:$',
-	':_$!<brother>!$_:':'^:_\\$!<brother>!\\$_:$',
-	':_$!<sister>!$_:':'^:_\\$!<sister>!\\$_:$',
-	':_$!<child>!$_:':'^:_\\$!<child>!\\$_:$',
-	':_$!<friend>!$_:':'^:_\\$!<friend>!\\$_:$',
-	':_$!<spouse>!$_:':'^:_\\$!<spouse>!\\$_:$',
-	':_$!<partner>!$_:':'^:_\\$!<partner>!\\$_:$',
-	':_$!<assistant>!$_:':'^:_\\$!<assistant>!\\$_:$',
-	':_$!<manager>!$_:':'^:_\\$!<manager>!\\$_:$',
-	':_$!<other>!$_:':'^:_\\$!<other>!\\$_:$'
+	':_$!<father>!$_:': RegExp('^:_\\$!<father>!\\$_:$'),
+	':_$!<mother>!$_:': RegExp('^:_\\$!<mother>!\\$_:$'),
+	':_$!<parent>!$_:': RegExp('^:_\\$!<parent>!\\$_:$'),
+	':_$!<brother>!$_:': RegExp('^:_\\$!<brother>!\\$_:$'),
+	':_$!<sister>!$_:': RegExp('^:_\\$!<sister>!\\$_:$'),
+	':_$!<child>!$_:': RegExp('^:_\\$!<child>!\\$_:$'),
+	':_$!<friend>!$_:': RegExp('^:_\\$!<friend>!\\$_:$'),
+	':_$!<spouse>!$_:': RegExp('^:_\\$!<spouse>!\\$_:$'),
+	':_$!<partner>!$_:': RegExp('^:_\\$!<partner>!\\$_:$'),
+	':_$!<assistant>!$_:': RegExp('^:_\\$!<assistant>!\\$_:$'),
+	':_$!<manager>!$_:': RegExp('^:_\\$!<manager>!\\$_:$'),
+	':_$!<other>!$_:': RegExp('^:_\\$!<other>!\\$_:$')
 };
 
 dataTypes['person_type_store_as']={
@@ -1594,19 +1872,19 @@ dataTypes['person_type_store_as']={
 	'_$!<spouse>!$_':'_$!<Spouse>!$_',
 	'_$!<partner>!$_':'_$!<Partner>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['im_type']={
-	'work':'^work$',
-	'home':'^home$',
-	':mobileme:':'^(?::mobileme:|mobileme)$',
-	':_$!<other>!$_:':'^(?::_\\$!<other>!\\$_:|other)$'
+	'work': RegExp('^work$'),
+	'home': RegExp('^home$'),
+	':mobileme:': RegExp('^(?::mobileme:|mobileme)$'),
+	':_$!<other>!$_:': RegExp('^(?::_\\$!<other>!\\$_:|other)$')
 };
 
 dataTypes['im_type_store_as']={
 	'_$!<mobileme>!$_':'_$!<mobileMe>!$_',
 	'_$!<other>!$_':'_$!<Other>!$_'
-}
+};
 
 dataTypes['im_service_type_store_as']={
 	'aim':'AIM',
@@ -1620,15 +1898,15 @@ dataTypes['im_service_type_store_as']={
 	'googletalk':'GoogleTalk',
 	'qq':'QQ',
 	'skype':'Skype'
-}
-
-dataTypes['profile_type']={
-	'twitter':'^twitter$',
-	'facebook':'^facebook$',
-	'flickr':'^flickr$',
-	'linkedin':'^linkedin$',
-	'myspace':'^myspace$',
-	'sinaweibo':'^sinaweibo$'
 };
 
-dataTypes['profile_type_store_as']={}
+dataTypes['profile_type']={
+	'twitter': RegExp('^twitter$'),
+	'facebook': RegExp('^facebook$'),
+	'flickr': RegExp('^flickr$'),
+	'linkedin': RegExp('^linkedin$'),
+	'myspace': RegExp('^myspace$'),
+	'sinaweibo': RegExp('^sinaweibo$')
+};
+
+dataTypes['profile_type_store_as']={};

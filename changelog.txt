@@ -1,5 +1,77 @@
 CardDavMATE Changelog
 
+
+NOTE: if you are interested in integrated version of CardDavMATE and CalDavZAP (our CalDAV web client) please use InfCloud - http://www.inf-it.com/open-source/clients/infcloud/
+
+version 0.13.1 [2015-09-22]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
+- changed login screen autocomplete behaviour - we do not prevent browsers from remembering login/password anymore
+- fixed a bug related to vCard PHOTO attribute processing (and the related "The contact on the server was changed and reloaded!" message)
+
+version 0.13.0 [2015-09-16]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
+- note: if you use a server with cross-domain setup see the modified Access-Control-Allow-Headers and Access-Control-Expose-Headers in readme.txt (or misc/config_davical.txt or misc/calendarserver.diff); you MUST update these headers, otherwise the client will NOT work
+- configuration - added globalEnableRefresh option which enables/disables the new "refresh all resources" icon in the left application menu (disabled by default)
+- configuration - added globalCollectionDisplay, globalCollectionSort and globalContactDataMinVisiblePercentage - these options allow to configure our new fully customizable wide contact list (see config.js)
+- added Chinese localization (zh_CN) - thanks Fandy
+- added shift+login shortcut to ignore settings stored on the server and use the default settings (this functionality was added long time ago, but I forgot to mention about it)
+- added support for "Prefer: return=representation" (and related "Preference-Applied: return=representation") for PUT requests (see http://tools.ietf.org/html/rfc7240); this change REQUIRES update of Access-Control-Allow-Headers and Access-Control-Expose-Headers if cross-domain setup is used
+- added support for automatically expanding fields in the editor (e.g. if you enter a phone number, another phone number field is automatically expanded)
+- added support for multiple street components in a single address field (additional fields are automatically expanded)
+- added an option to specify a remote URL as photo source - use shift+click on a photo box to add an URL
+- added check for unsupported XML 1.0 characters in user entered data - these are replaced by a space character (to prevent client and/or server side parsing errors)
+- added title with version number for the software name/description (login screen)
+- fixed vCard line folding (RFC2426 - section 2.6)
+- changed version checking - use internal build number for software version comparison to support update notification also for beta and rc builds
+- changed initialy enabled collections behaviour - if there are no enabled collections during the login, enable all available collections owned by the logged user
+- changed format and comments in config.js
+- changed storing of user settings (PROPPATCH request) - no server request will be made if there is no change in settings
+- updated jQuery to 2.1.4
+- updated localizations - thanks Niels Bo Andersen [da_DK], Marten Gajda [de_DE], Damian Vila [es_ES], Gabriela Vattier [fr_FR], Luca Ferrario [it_IT], Muimu Nakayama [ja_JP], Johan Vromans [nl_NL], Selcuk Pultar [tr_TR], Александр Симонов [ru_RU], Serge Yakimchuck [uk_UA]
+- other improvements and fixes
+
+version 0.12.1 [2015-03-16]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
+- note: you NEED to enable "mod_headers" in Apache (for other servers see your server documentation) which is used to generate proper HTTP headers (required for correct support of HTML5 cache in browsers); the previously used mod_expire is not longer used (see the changelog entry below)
+- added support for absolute collection URLs returned in PROPFIND request
+- fixed HTML5 cache related problems (especially in Firefox) by returning "Cache-Control: max-age=0, must-revalidate, no-cache, no-transform, private" header instead of "Cache-Control: max-age=0" - this fix requires enabled "mod_headers" (you can disable the previously used "mod_expires") in Apache - for more details see .htaccess
+- updated jQuery-UI to 1.11.4
+- other improvements and fixes
+
+version 0.12.0 [2015-01-26]:
+- note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
+- note: this release contains new, changed and also removed configuration options (always use the latest config.js)
+- configuration - removed showHeader option from globalAccountSettings, globalNetworkCheckSettings and globalNetworkAccountSettings - it is incompatible with new functionality
+- configuration - removed globalResourceHeaderShowLogin option - it is replaced by much more flexible hrefLabel option in globalAccountSettings and globalNetworkCheckSettings (see config.js)
+- configuration - removed syncInterval option from globalAccountSettings and globalNetworkCheckSettings - detection of sync-token changes is now performed by ONE request instead of N (number of collections) - use globalSyncResourcesInterval instead
+- configuration - removed crossDomain and withCredentials options from default globalAccountSettings, globalNetworkCheckSettings and globalNetworkAccountSettings - both settings are still available but there is NO REASON to use them (crossDomain is detected automatically, and I've never seen anyone who understand when to use withCredentials /there is NO REASON to set it to true!/)
+- configuration - added globalGroupContactsByCompanies configuration option - used to group contacts by company/department name instead of simple alphabetical sort (default false)
+- configuration - added globalCrossServerSettingsURL configuration option - enable this option if your CardDavMATE installation is accessible from multiple URLs (URL1, URL2), otherwise settings (such as enabled/active collections) stored from the URL1 will be incompatible with settings stored from URL2
+- configuration - added globalAddrColorPropertyXmlns configuration option - used to define the namespace for addressbook-color property (see below)
+- configuration - changed default value for delegation option to true (in globalAccountSettings, globalNetworkCheckSettings and globalNetworkAccountSettings)
+- added Spanish localization (es_ES) - thanks Damián Vila
+- added Japan localization (ja_JP) - thanks Muimu Nakayama
+- added Russian localization (ru_RU) - thanks Александр Симонов
+- added Ukrainian localization (uk_UA) - thanks Serge Yakimchuck
+- MAJOR functionality and design changes (including the open source Roboto font)
+- MAJOR performacne improvements
+- major improvements and changes in the sychronization code
+- major readme.txt update with detailed descriptions of most common setup problems
+- added support for loading and unloading of user collections and delegated collections (delegation functionality)
+- added addressbook color functionality (we hope you will like the new approach :-))
+- added automatic photo resize functionality (no more photo size limit - we simply resize it in the browser)
+- added support for generic (Apple-like) date attributes (instead of fixed BDAY and ANNIVERSARY)
+- added support for 'headervalue' collection property (namespace: http://inf-it.com/ns/dav/) - useful for collection grouping
+- added new overlay with refresh button which is shown when cache manifest change is detected (it forces users to reload the page)
+- added support for LDAP binding in auth/ldap module (see auth/plugins/ldap_conf.inc)
+- added currently logged user into the page title
+- added misc/readme_baikal_sabredav.txt and misc/baikal-flat-0.2.7.diff to solve issues related to storing CardDavMATE (and also CalDavZAP) properties on SabreDAV and Baïkal - thanks Johannes Zellner
+- removed globalSearchAutoCleanup configuration option (it is no longer required)
+- updated auth module to reflect the latest changes in configuration options
+- updated jQuery to 2.1.3
+- updated jQuery-UI to 1.11.2
+- various fixes, optimalizations, improvements, visual updates and more
+
 version 0.11.1 [2013-07-26]:
 - note: do not forget to execute the cache_update.sh script every time you update your configuration or any other file (otherwise your browser will use the previous version of files stored in HTML5 cache); alternatively you can update the cache.manifest manually - edit the second line beginning with "#V 20" to anything else (this file simple needs "some" change)
 - added support for dynamic height of NOTE field - thanks http://www.jacklmoore.com/autosize/
@@ -263,7 +335,7 @@ version 0.9.1 [2012-01-29]:
 - updated readme.txt
 
 version 0.9.0 [2012-01-10]:
-- note: if you use DAViCal with cross-domain setup you need to update your apache configuration (see misc/config_davical.txt) 
+- note: if you use DAViCal with cross-domain setup you need to update your apache configuration (see misc/config_davical.txt)
 - note: if you use MacOS X Lion calendarserver you need to re-patch your installation (see misc/readme_lion.txt and the changelog below)
 - added support for drag&drop contact move operation (not available if the source or destination collection is read-only)
 - added support for "Delete from Group" (available if an Apple contact group is loaded)
@@ -360,7 +432,7 @@ version 0.7.1 [2011-11-10]:
 
 version 0.7.0 [2011-11-09]:
 - note: this release contains many configuration changes (always use the latest config.js)
-- note: if you use DAViCal you need to update your apache configuration (see misc/config_davical.txt) 
+- note: if you use DAViCal you need to update your apache configuration (see misc/config_davical.txt)
 - note: if you use MacOS X Lion calendarserver you need to re-patch your installation (see misc/readme_lion.txt and the changelog below)
 - configuration - renamed updateInterval option in globalAccountSettings to syncInterval (now the name corresponds to reality)
 - configuration - removed globalReloadCollection setting (use the syncInterval in globalAccountSettings instead)
@@ -419,7 +491,7 @@ version 0.6.0 [2011-10-19]:
 
 version 0.5.2 [2011-10-06]:
 - fixed regular expressions for login matching in deleteVcardFromCollection and putVcardToCollection functions (fixes add/update/delete operations)
-- fixed several CSS issues 
+- fixed several CSS issues
 - added new configuration option globalWithCredentials which sets withCredentials for cross domain queries in jQuery (note: if the value is set to true, use of Access-Control-Allow-Origin "*" is not allowed)
 
 version 0.5.1 [2011-10-03]:

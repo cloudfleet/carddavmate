@@ -8,16 +8,14 @@
 		<crossdomain>null</crossdomain>
 		<forcereadonly>null</forcereadonly>
 		<withcredentials>false</withcredentials>
-		<showheader>true</showheader>
 		<settingsaccount>true</settingsaccount>
 		<checkcontenttype>true</checkcontenttype>
-		<delegation>false</delegation>
+		<delegation>true</delegation>
 		<userauth>
 			<username>user</username>
 			<password>password</password>
 		</userauth>
-		<syncinterval>60000</syncinterval>
-		<timeout>30000</timeout>
+		<timeout>90000</timeout>
 		<locktimeout>10000</locktimeout>
 	</resource>
 	<resource>
@@ -29,7 +27,6 @@
 		<crossdomain>null</crossdomain>
 		<forcereadonly>true</forcereadonly>
 		<withcredentials>false</withcredentials>
-		<showheader>true</showheader>
 		<settingsaccount>false</settingsaccount>
 		<checkcontenttype>true</checkcontenttype>
 		<delegation>
@@ -42,8 +39,7 @@
 			<username>user</username>
 			<password>password</password>
 		</userauth>
-		<syncinterval>60000</syncinterval>
-		<timeout>30000</timeout>
+		<timeout>90000</timeout>
 		<locktimeout>10000</locktimeout>
 	</resource>
 	<resource>
@@ -60,7 +56,6 @@
 			<collection>re|i:^/caldav.php/user/collection[0-9]/$</collection>
 		</forcereadonly>
 		<withcredentials>false</withcredentials>
-		<showheader>true</showheader>
 		<settingsaccount>false</settingsaccount>
 		<checkcontenttype>true</checkcontenttype>
 		<delegation>false</delegation>
@@ -68,8 +63,7 @@
 			<username>user</username>
 			<password>password</password>
 		</userauth>
-		<syncinterval>60000</syncinterval>
-		<timeout>30000</timeout>
+		<timeout>90000</timeout>
 		<locktimeout>10000</locktimeout>
 	</resource>
 </resources>

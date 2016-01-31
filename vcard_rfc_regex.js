@@ -1,6 +1,9 @@
 /*
-CardDavMATE - CardDav Web Client
-Copyright (C) 2011-2013 Jan Mate <jan.mate@inf-it.com>
+CardDavMATE - the open source CardDAV Web Client
+Copyright (C) 2011-2015
+    Jan Mate <jan.mate@inf-it.com>
+    Andrej Lezo <andrej.lezo@inf-it.com>
+    Matej Mihalik <matej.mihalik@inf-it.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
@@ -208,19 +211,28 @@ vCard.re['X-ADDRESSBOOKSERVER-MEMBER']='(?:'+vCard.re['group']+'\\.)?X-ADDRESSBO
 vCard.pre['X-ADDRESSBOOKSERVER-MEMBER']=RegExp('\r\n'+vCard.re['X-ADDRESSBOOKSERVER-MEMBER'],'mi');
 vCard.re['contentline_X-ANNIVERSARY']='(?:'+vCard.re['group']+'\\.)?X-ANNIVERSARY(?:(?:(?:;VALUE=date)?:'+vCard.re['date-value']+')|(?:(?:;VALUE=date-time)?:'+vCard.re['date-time-value']+'))'+vCard.re['CRLF'];
 vCard.pre['contentline_X-ANNIVERSARY']=RegExp('\r\n'+vCard.re['contentline_X-ANNIVERSARY'],'mi');
+vCard.re['contentline_X-ABDATE']='(?:'+vCard.re['group']+'\\.)?X-ABDATE(?:;'+vCard.re['x-abrelatednames-param']+')*:'+vCard.re['text-value']+vCard.re['CRLF'];
+vCard.pre['contentline_X-ABDATE']=RegExp('\r\n'+vCard.re['contentline_X-ABDATE'],'mi');
 
-// Internal processing
-var IntProc = new Object();
-IntProc['last']=RegExp('last','');
-IntProc['_last']=RegExp('.*last','');
-IntProc['first']=RegExp('first','');
-IntProc['_first']=RegExp('.*first','');
-IntProc['middle']=RegExp('middle','');
-IntProc['_middle']=RegExp('.*middle','');
-IntProc['prefix']=RegExp('prefix','');
-IntProc['_prefix']=RegExp('.*prefix','');
-IntProc['suffix']=RegExp('suffix','');
-IntProc['_suffix']=RegExp('.*suffix','');
+// Prepared regexes for other functions
+vCard.pre['additionalRFCFixes_tel-param']=new RegExp('^'+vCard.re['tel-param']+'$', 'i');
+vCard.pre['additionalRFCFixes_email-param']=new RegExp('^'+vCard.re['email-param']+'$', 'i');
+vCard.pre['additionalRFCFixes_email-params']=new RegExp('^'+vCard.re['email-param']+'(?:;'+vCard.re['email-param']+')*$', 'i');
+vCard.pre['additionalRFCFixes_comma-g']=new RegExp(',', 'g');
+vCard.pre['additionalRFCFixes_type-internet']=new RegExp(';TYPE=internet;|;TYPE=internet$', 'i');
+vCard.pre['basicRFCFixesAndCleanup_r-m']=RegExp('\r', 'm');
+vCard.pre['basicRFCFixesAndCleanup_n-gm']=RegExp('\n', 'gm');
+vCard.pre['basicRFCFixesAndCleanup_rnp-gm']=RegExp('(\r\n)+', 'gm');
+vCard.pre['basicRFCFixesAndCleanup_rnwsp-gm']=RegExp('\r\n'+vCard.re['WSP'], 'gm');
+vCard.pre['basicRFCFixesAndCleanup_photo-gim']=RegExp('\r\nPHOTO;BASE64:', 'gim');
+vCard.pre['normalizeVcard_group_w_dot']=RegExp('^[^.]+\\.');
+vCard.pre['normalizeVcard_date']=RegExp('^([0-9]{4})-?([0-9]{2})-?([0-9]{2})(.*)','i');
+vCard.pre['normalizeVcard_xb_or_ide']=RegExp('^X-|-ID$', 'ig');
+vCard.pre['normalizeVcard_before_val']=RegExp('^[^:]+:');
+vCard.pre['normalizeVcard_rn-gm']=RegExp('\r\n', 'gm');
+vCard.pre['vcardToData_colon_begin_or_end']=RegExp('^:|:$', 'g');
+vCard.pre['vcardToData_before_val']=RegExp('^[^:]+:');
+vCard.pre['accountUidParts']=RegExp('^(https?://)([^@/]+(?:@[^@/]+)?)@([^/]+)(.*/)', 'i');
 
 // Editor
 vCard.tplC['begin']='##:::##group_wd##:::##BEGIN:VCARD\r\n';
@@ -243,8 +255,8 @@ vCard.tplC['contentline_NICKNAME']='##:::##group_wd##:::##NICKNAME##:::##params_
 vCard.tplM['contentline_NICKNAME']=null;
 vCard.tplC['contentline_BDAY']='##:::##group_wd##:::##BDAY##:::##params_wsc##:::##:##:::##value##:::##\r\n';
 vCard.tplM['contentline_BDAY']=null;
-vCard.tplC['contentline_X-ANNIVERSARY']='##:::##group_wd##:::##X-ANNIVERSARY##:::##params_wsc##:::##:##:::##value##:::##\r\n';
-vCard.tplM['contentline_X-ANNIVERSARY']=null;
+vCard.tplC['contentline_X-ABDATE']='##:::##group_wd##:::##X-ABDATE##:::##params_wsc##:::##:##:::##value##:::##\r\n';
+vCard.tplM['contentline_X-ABDATE']=null;
 vCard.tplC['contentline_TITLE']='##:::##group_wd##:::##TITLE##:::##params_wsc##:::##:##:::##value##:::##\r\n';
 vCard.tplM['contentline_TITLE']=null;
 vCard.tplC['contentline_URL']='##:::##group_wd##:::##URL##:::##params_wsc##:::##:##:::##value##:::##\r\n';
